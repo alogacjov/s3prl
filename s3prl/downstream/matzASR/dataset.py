@@ -66,7 +66,8 @@ class SequenceDataset(Dataset):
         assert len(X) != 0, f"0 data found for {split}"
 
         # Transcripts
-        Y = self._load_transcript(X)
+        transcript_path = self.libri_root + '/' + self.split_sets[0] + '/transcripts.txt'
+        Y = self._load_transcript(transcript_path)
 
         x_names = set([self._parse_x_name(x) for x in X])
         y_names = set(Y.keys())
@@ -113,32 +114,17 @@ class SequenceDataset(Dataset):
         assert sr == self.sample_rate, f'Sample rate mismatch: real {sr}, config {self.sample_rate}'
         return wav.view(-1)
 
-    def _load_transcript(self, x_list):
+    def _load_transcript(self, transcript_path):
         """Load the transcripts for Librispeech"""
         def process_trans(transcript):
             #TODO: support character / bpe
-            transcript = transcript.upper()
+            transcript = transcript.lower()
             return " ".join(list(transcript.replace(" ", "|"))) + " |"
-
-        trsp_sequences = {}
-        split_spkr_chap_list = list(
-            set(
-                "/".join(x.split('/')[:-1]) for x in x_list
-            )
-        )
-
-        for dir in split_spkr_chap_list:
-            parts = dir.split('/')
-            trans_path = f"{parts[-2]}-{parts[-1]}.trans.txt"
-            path = os.path.join(self.libri_root, dir, trans_path)
-            assert os.path.exists(path)
-
-            with open(path, "r") as trans_f:
-                for line in trans_f:
-                    lst = line.strip().split()
-                    trsp_sequences[lst[0]] = process_trans(" ".join(lst[1:]))
-
-        return trsp_sequences
+        trsp = pd.read_csv(transcript_path,
+                           sep='\t', header=None)
+        keys, values = zip(*trsp.values)
+        values = list(map(process_trans, values))
+        return dict(zip(keys, values))
 
     def _build_dictionary(self, transcripts, workers=1, threshold=-1, nwords=-1, padding_factor=8):
         d = Dictionary()

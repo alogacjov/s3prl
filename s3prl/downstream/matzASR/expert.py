@@ -100,7 +100,7 @@ class DownstreamExpert(nn.Module):
         self.register_buffer('best_score', torch.ones(1) * 100)
 
     # Interface
-    def get_dataloader(self, split):
+    def get_dataloader(self, split, **args):
         """
         Args:
             split: string
